@@ -17,6 +17,7 @@ fn main() {
         .qt_module("Network")
         .qt_module("Quick")
         .file("src/inspector.rs")
+        .file("src/syntax_highlighter.rs")
         .qobject_header("include/helper.h")
         .build();
     println!("cargo:rerun-if-changed=include/helper.h");

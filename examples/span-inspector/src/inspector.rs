@@ -4,7 +4,6 @@
 //
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
-use crate::syntax_highlighter::SyntaxHighlighterRust;
 use cxx_qt_gen::{write_rust, Parser};
 use proc_macro2::{TokenStream, TokenTree};
 use std::default::Default;
@@ -15,50 +14,14 @@ use syn::{parse2, ItemMod};
 #[cxx_qt::bridge]
 pub mod qobject {
     unsafe extern "C++" {
-        include!("cxx-qt-lib/common.h");
-
-        #[rust_name = "make_q_brush"]
-        #[namespace = "rust::cxxqtlib1"]
-        fn make_unique(color: &QColor) -> UniquePtr<QBrush>;
-
-        #[rust_name = "make_q_text_char_format"]
-        #[namespace = "rust::cxxqtlib1"]
-        fn make_unique() -> UniquePtr<QTextCharFormat>;
-    }
-
-    unsafe extern "C++" {
         include!("cxx-qt-lib/qstring.h");
         type QString = cxx_qt_lib::QString;
 
         include!("cxx-qt-lib/qcolor.h");
         type QColor = cxx_qt_lib::QColor;
 
-        include!("helper.h");
-        type QSyntaxHighlighterCXX;
-
         include!(<QTextCharFormat>);
         type QTextCharFormat;
-
-        include!(<QBrush>);
-        type QBrush;
-
-        include!(<QTextBlock>);
-        type QTextBlock;
-
-        #[cxx_name = "length"]
-        fn length(self: &QTextBlock) -> i32;
-
-        #[cxx_name = "position"]
-        fn position(self: &QTextBlock) -> i32;
-
-        #[cxx_name = "setForeground"]
-        fn set_foreground(self: Pin<&mut QTextCharFormat>, brush: &QBrush);
-
-        #[cxx_name = "setBackground"]
-        fn set_background(self: Pin<&mut QTextCharFormat>, brush: &QBrush);
-
-        #[cxx_name = "setColor"]
-        fn set_color(self: Pin<&mut QBrush>, color: &QColor);
     }
 
     unsafe extern "C++Qt" {
@@ -108,71 +71,13 @@ pub mod qobject {
         fn update_cursor(self: Pin<&mut SpanInspector>, cursor_position: i32);
     }
 
-    unsafe extern "C++Qt" {
-        include!(<QSyntaxHighlighter>);
-        #[qobject]
-        type QSyntaxHighlighter;
-
-        /// Creates a unique syntax highlighter instance.
-        ///
-        /// # Safety
-        /// - `text_document` must be a valid, non-null pointer to a `QTextDocument`.
-        /// - The caller must ensure the document outlives the returned `UniquePtr`.
-        #[rust_name = "make_q_syntax_highlighter"]
-        #[namespace = "rust::cxxqtlib1"]
-        unsafe fn make_unique(text_document: *mut QTextDocument) -> UniquePtr<SyntaxHighlighter>;
-    }
-
-    unsafe extern "RustQt" {
-        #[qobject]
-        #[base = QSyntaxHighlighterCXX]
-        type SyntaxHighlighter = super::SyntaxHighlighterRust;
-
-        #[qinvokable]
-        #[cxx_override]
-        #[cxx_name = "highlightBlock"]
-        fn highlight_block(self: Pin<&mut SyntaxHighlighter>, text: &QString);
-
-        #[inherit]
-        #[cxx_name = "setFormat"]
-        fn set_format(
-            self: Pin<&mut SyntaxHighlighter>,
-            start: i32,
-            end: i32,
-            format: &QTextCharFormat,
-        );
-
-        #[inherit]
-        #[cxx_name = "setCurrentBlockState"]
-        fn set_current_block_state(self: Pin<&mut SyntaxHighlighter>, new_state: i32);
-
-        #[inherit]
-        #[cxx_name = "previousBlockState"]
-        fn previous_block_state(self: &SyntaxHighlighter) -> i32;
-
-        #[inherit]
-        #[cxx_name = "currentBlockCXX"]
-        fn current_block(self: Pin<&mut SyntaxHighlighter>) -> UniquePtr<QTextBlock>;
-
-        #[inherit]
-        #[cxx_name = "rehighlight"]
-        fn rehighlight(self: Pin<&mut SyntaxHighlighter>);
-    }
-
-    impl
-        cxx_qt::Constructor<
-            (*mut QTextDocument,),
-            BaseArguments = (*mut QTextDocument,),
-            NewArguments = (),
-        > for SyntaxHighlighter
-    {
-    }
-
     impl UniquePtr<QTextDocument> {}
     impl cxx_qt::Threading for SpanInspector {}
 }
 
-use crate::inspector::qobject::{make_q_syntax_highlighter, SyntaxHighlighter};
+use crate::syntax_highlighter::syntax_highlighter_ffi::{
+    make_q_syntax_highlighter, SyntaxHighlighter,
+};
 use cxx::UniquePtr;
 use cxx_qt::{CxxQtType, Threading};
 use qobject::{QQuickTextDocument, QString, QTextDocument};
@@ -197,26 +102,6 @@ impl Default for SpanInspectorRust {
             thread_count: 0,
             last_expansion: Err("".into()),
         }
-    }
-}
-
-impl cxx_qt::Constructor<(*mut QTextDocument,)> for qobject::SyntaxHighlighter {
-    type BaseArguments = (*mut QTextDocument,);
-    type InitializeArguments = ();
-    type NewArguments = ();
-
-    fn route_arguments(
-        args: (*mut QTextDocument,),
-    ) -> (
-        Self::NewArguments,
-        Self::BaseArguments,
-        Self::InitializeArguments,
-    ) {
-        ((), args, ())
-    }
-
-    fn new(_: ()) -> SyntaxHighlighterRust {
-        SyntaxHighlighterRust::default()
     }
 }
 
